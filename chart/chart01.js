@@ -11,9 +11,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const lastUpdateElement = document.getElementById('lastUpdateDisplay');
     const failedLoginsElement = document.getElementById('failedLoginsDisplay');
     const authLogElement = document.getElementById('authLogDisplay');
+    // NEW: Get a handle for the syslog display element
+    const syslogElement = document.getElementById('syslogDisplay');
 
     // --- CHART CREATION HELPERS ---
     // (createLiveChart, createStackedMemoryChart, createDiskUsageChart functions are unchanged)
+
     function createLiveChart(canvasId, color, forceIntegerTicks = false, yMax = null) {
         const ctx = document.getElementById(canvasId).getContext('2d');
         const [r, g, b] = color;
@@ -130,7 +133,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- CHART CONFIG & INITIALIZATION ---
 
-    // UPDATED: Added running and total process charts back
     const chartConfigs = {
         cpu: { canvasId: 'cpuChart', valueId: 'cpuValue', dataKey: 'cpuUsage', unit: '%', color: [231, 76, 60], yMax: 100 },
         loadAvg1: { canvasId: 'loadAvg1Chart', valueId: 'loadAvg1Value', dataKey: 'loadAvg1', unit: '', color: [255, 99, 132] },
@@ -156,7 +158,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const memoryValueElement = document.getElementById('memoryValue');
 
     // --- UPDATE LOGIC ---
-    // (The updateDashboard function is unchanged and will work with the new chartConfigs)
+
     function updateDashboard(jsonData) {
         if (!jsonData || !jsonData.hostname) {
             console.error("Received invalid data from sensor:", jsonData);
@@ -175,6 +177,12 @@ document.addEventListener('DOMContentLoaded', () => {
         if (jsonData.authLog && Array.isArray(jsonData.authLog)) {
             authLogElement.textContent = jsonData.authLog.join('\n');
             authLogElement.scrollTop = authLogElement.scrollHeight;
+        }
+
+        // NEW: Update syslog display and auto-scroll
+        if (jsonData.syslog && Array.isArray(jsonData.syslog)) {
+            syslogElement.textContent = jsonData.syslog.join('\n');
+            syslogElement.scrollTop = syslogElement.scrollHeight;
         }
 
         // Update all simple line charts and their value displays
@@ -224,7 +232,13 @@ document.addEventListener('DOMContentLoaded', () => {
     async function fetchLatestData() {
         try {
             // Add a cache-busting parameter to the URL
-            const response = await fetch(`${SENSOR_URL}?t=${Date.now()}`);
+            const response = await fetch(`${SENSOR_URL}?t=${Date.now()}`, {
+
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+
+            });
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             const jsonData = await response.json();
             updateDashboard(jsonData);
@@ -233,6 +247,7 @@ document.addEventListener('DOMContentLoaded', () => {
             dashboardTitleElement.textContent = 'Connection Error';
         }
     }
+// ... rest of the file
 
     // --- START THE LIVE UPDATE ---
     fetchLatestData();
